@@ -1,0 +1,26 @@
+{
+	"type": "xypdf",
+	"description": "xyOps Portable Data Object",
+	"version": "1.0",
+	"xyops": "1.1.4",
+	"items": [
+		{
+			"type": "plugin",
+			"data": {
+				"enabled": true,
+				"type": "scheduler",
+				"icon": "lan-check",
+				"command": "node",
+				"script": "// Target Online Gate Plugin for xyOps\n// Copyright (c) 2026 Felix Bartels\n// MIT License\n\n// Trigger Plugin: launch a scheduled job only if one of its targets is online.\n// If all targets are offline, one job may still launch and wait in the queue.\n// Further jobs are skipped while that job is pending.\n// The event needs a Max Queue Limit of at least 1 for the queued job.\n// Targets may be server IDs or group IDs. Events without targets always launch.\n// Needs an API key in the XYOPS_API_KEY secret variable.\n\n// Wrapped in an async function, because the temp file may not load as a module.\n(async () => {\n\tconst chunks = [];\n\tfor await (const chunk of process.stdin) chunks.push(chunk);\n\tconst data = JSON.parse(chunks.join(''));\n\n\tconst baseUrl = data.base_url || process.env.XYOPS_BASE_URL;\n\tconst apiKey = (data.secrets && data.secrets.XYOPS_API_KEY) || process.env.XYOPS_API_KEY;\n\n\tconst api = async (name) => {\n\t\tconst res = await fetch(`${baseUrl}/api/app/${name}/v1`, { headers: { 'X-API-Key': apiKey } });\n\t\tconst body = await res.json();\n\t\tif (body.code) throw new Error(body.description || `API error ${body.code}`);\n\t\treturn body.rows || [];\n\t};\n\n\tlet servers = null;\n\ttry {\n\t\tservers = (await api('get_active_servers')).filter((s) => s.enabled);\n\t} catch (err) {\n\t\t// Fail open, so a broken check never silently stops all jobs.\n\t\tconsole.error(`Server lookup failed, launching anyway: ${err.message}`);\n\t}\n\n\t// The input active_jobs list does not contain queued jobs, so ask the API.\n\t// Null means unknown, and offline events are then skipped to avoid aborts.\n\tlet pending = null;\n\ttry {\n\t\tpending = new Set((await api('get_active_jobs')).map((job) => job.event));\n\t} catch (err) {\n\t\tconsole.error(`Job lookup failed, skipping offline events: ${err.message}`);\n\t}\n\n\tdata.items.forEach((item) => {\n\t\tconst targets = item.job.targets || [];\n\t\tconst online = !servers || !targets.length || servers.some((s) =>\n\t\t\ttargets.includes(s.id) || (s.groups || []).some((g) => targets.includes(g))\n\t\t);\n\t\titem.launch = online || (pending !== null && !pending.has(item.job.id));\n\t\t// Remember launches, so one batch never queues two jobs for an event.\n\t\tif (item.launch && pending) pending.add(item.job.id);\n\t});\n\n\tprocess.stdout.write(JSON.stringify({ xy: 1, items: data.items }) + '\\n');\n})();\n",
+				"params": [],
+				"groups": [],
+				"format": "",
+				"uid": "",
+				"gid": "",
+				"notes": "Skips scheduled jobs while all event targets are offline. Allows one queued job per event. Needs an XYOPS_API_KEY secret.",
+				"id": "target_online_gate",
+				"title": "Target Online Gate"
+			}
+		}
+	]
+}

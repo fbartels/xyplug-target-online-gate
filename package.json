@@ -1,0 +1,27 @@
+{
+	"name": "xyplug-target-online-gate",
+	"version": "1.0.0",
+	"private": true,
+	"description": "xyOps Trigger Plugin that skips scheduled jobs while all event targets are offline.",
+	"author": "Felix Bartels <felix@9wd.eu>",
+	"homepage": "https://git.9wd.eu/apps/xyplug-target-online-gate",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://git.9wd.eu/apps/xyplug-target-online-gate.git"
+	},
+	"bugs": {
+		"url": "https://git.9wd.eu/apps/xyplug-target-online-gate/issues"
+	},
+	"keywords": [
+		"xyops",
+		"trigger",
+		"scheduler"
+	],
+	"scripts": {
+		"build": "node build.js"
+	},
+	"engines": {
+		"node": ">=18"
+	}
+}
